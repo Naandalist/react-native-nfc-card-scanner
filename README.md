@@ -305,6 +305,10 @@ Contributions are welcome! Please open an issue or submit a pull request.
 5. Commit your changes
 6. Push to the branch and open a Pull Request
 
+## Author
+
+**Listiananda Apriliawan** — [naandalist.com](https://naandalist.com/)
+
 ## License
 
 [MIT](LICENSE)
