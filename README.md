@@ -281,6 +281,24 @@ try {
 }
 ```
 
+## Example
+
+A full working example app is available in the [`example/`](example/) directory. It demonstrates scanning a card, displaying results, handling errors, and checking NFC status.
+
+To run the example:
+
+```bash
+cd example
+npm install
+
+# Android
+npx react-native run-android
+
+# iOS
+cd ios && pod install && cd ..
+npx react-native run-ios
+```
+
 ## How It Works
 
 This library communicates with EMV contactless payment cards using the ISO-DEP (ISO 14443-4) protocol:
