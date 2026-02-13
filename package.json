@@ -1,0 +1,64 @@
+{
+  "name": "react-native-nfc-card-scanner",
+  "version": "1.0.0",
+  "description": "Scan credit & debit card details (card number, expiry, card type) via NFC contactless reader for React Native (Android & iOS)",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "yarn build"
+  },
+  "keywords": [
+    "react-native",
+    "nfc",
+    "nfc-card-reader",
+    "nfc-credit-card",
+    "nfc card",
+    "card-scanner",
+    "card-reader",
+    "credit-card",
+    "debit-card",
+    "payment-card",
+    "emv",
+    "contactless",
+    "tap-to-pay",
+    "payment",
+    "iso-dep",
+    "tlv",
+    "android",
+    "ios"
+  ],
+  "author": "Listiananda Apriliawan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Naandalist/react-native-nfc-card-scanner.git"
+  },
+  "homepage": "https://github.com/Naandalist/react-native-nfc-card-scanner#readme",
+  "bugs": {
+    "url": "https://github.com/Naandalist/react-native-nfc-card-scanner/issues"
+  },
+  "peerDependencies": {
+    "react-native-nfc-manager": ">=3.14.0"
+  },
+  "devDependencies": {
+    "react-native-nfc-manager": "^3.16.1",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  }
+}
