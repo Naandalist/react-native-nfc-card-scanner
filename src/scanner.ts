@@ -1,7 +1,15 @@
 import NfcManager, { NfcTech, NfcAdapter } from 'react-native-nfc-manager';
 
 import emv from './emv';
-import { CardScheme, EmvObject, NfcCardResult } from './types';
+import {
+  CardScheme,
+  EmvObject,
+  NfcCardResult,
+  NfcError,
+  ScanNfcOptions,
+} from './types';
+
+const DEFAULT_TIMEOUT = 30000;
 
 enum EmvTemplateStructure {
   FLAT = '70',
@@ -29,7 +37,7 @@ const toHexString = (byteArray: number[]): string => {
 };
 
 const extractAidTags = (hex: string): string[] => {
-  const regex = /4F(..)([A-F0-9]+)/g;
+  const regex = /4F(..)([A-Fa-f0-9]+)/gi;
   const aids: string[] = [];
   let match;
   while ((match = regex.exec(hex))) {
@@ -41,19 +49,20 @@ const extractAidTags = (hex: string): string[] => {
 };
 
 export const getCardSchemeFromAid = (aid: string): CardScheme => {
-  if (aid.startsWith('A000000003')) {
+  const aidUpper = aid.toUpperCase();
+  if (aidUpper.startsWith('A000000003')) {
     return 'VISA';
   }
-  if (aid.startsWith('A000000004')) {
+  if (aidUpper.startsWith('A000000004')) {
     return 'MASTERCARD';
   }
-  if (aid.startsWith('A000000065')) {
+  if (aidUpper.startsWith('A000000065')) {
     return 'JCB';
   }
-  if (aid.startsWith('A000000025')) {
+  if (aidUpper.startsWith('A000000025')) {
     return 'AMEX';
   }
-  if (aid.startsWith('A000000333')) {
+  if (aidUpper.startsWith('A000000333')) {
     return 'UNIONPAY';
   }
   if (
@@ -74,7 +83,7 @@ const getEmvInfo = (info: string) => {
   });
 };
 
-const nestedTLVParser = (responses: EmvObject[]): NfcCardResult | null => {
+const nestedTLVParser = (responses: EmvObject[]): Omit<NfcCardResult, 'scheme'> | null => {
   const res = responses.find(
     (r) => r.tag === EmvTemplateStructure.NESTED && r.value?.length,
   );
@@ -93,7 +102,7 @@ const nestedTLVParser = (responses: EmvObject[]): NfcCardResult | null => {
   return null;
 };
 
-const flatTLVParser = (responses: EmvObject[]): NfcCardResult | null => {
+const flatTLVParser = (responses: EmvObject[]): Omit<NfcCardResult, 'scheme'> | null => {
   const res = responses.find(
     (r) => r.tag === EmvTemplateStructure.FLAT && r.value?.length,
   );
@@ -117,7 +126,7 @@ const flatTLVParser = (responses: EmvObject[]): NfcCardResult | null => {
 
 const extractRecord = async (
   type: EmvTemplateStructure,
-): Promise<NfcCardResult | null | undefined> => {
+): Promise<Omit<NfcCardResult, 'scheme'> | null> => {
   const fullPDOLCommands = [
     '80A800002383212800000000000000000000000000000002500000000000097820052600E8DA935200',
   ];
@@ -149,9 +158,11 @@ const extractRecord = async (
       return nestedTLVParser(emvParsed);
     }
   }
+
+  return null;
 };
 
-async function readNdef(): Promise<NfcCardResult | null> {
+async function readCardData(): Promise<NfcCardResult> {
   try {
     await NfcManager.requestTechnology(NfcTech.IsoDep);
 
@@ -165,12 +176,12 @@ async function readNdef(): Promise<NfcCardResult | null> {
     const selectedAid = aids[0];
 
     if (!selectedAid) {
-      throw 'AID_NOT_FOUND';
+      throw new Error(NfcError.AID_NOT_FOUND);
     }
     const scheme = getCardSchemeFromAid(selectedAid);
 
     if (!scheme) {
-      throw 'UNSUPPORTED_CARD_SCHEME';
+      throw new Error(NfcError.UNSUPPORTED_CARD_SCHEME);
     }
 
     // Step 2: SELECT AID
@@ -183,46 +194,54 @@ async function readNdef(): Promise<NfcCardResult | null> {
     const flatResp = await extractRecord(EmvTemplateStructure.FLAT);
     const nestedResp = await extractRecord(EmvTemplateStructure.NESTED);
 
-    if (flatResp?.card && flatResp?.exp) {
-      return flatResp;
-    } else if (nestedResp?.card && nestedResp?.exp) {
-      return nestedResp;
-    } else {
-      return null;
+    const cardData = flatResp?.card && flatResp?.exp ? flatResp : nestedResp;
+
+    if (!cardData?.card || !cardData?.exp) {
+      throw new Error(NfcError.CARD_READ_FAILED);
     }
-  } catch (ex) {
-    throw ex;
+
+    return { ...cardData, scheme };
   } finally {
     NfcManager.cancelTechnologyRequest();
   }
 }
 
-export const scanNfc = async (): Promise<NfcCardResult | null> => {
+export const scanNfc = async (
+  options?: ScanNfcOptions,
+): Promise<NfcCardResult> => {
+  const timeoutMs = options?.timeout ?? DEFAULT_TIMEOUT;
+
+  if (!(await NfcManager.isSupported())) {
+    throw new Error(NfcError.NFC_NOT_SUPPORTED);
+  }
+
+  if (!(await NfcManager.isEnabled())) {
+    throw new Error(NfcError.NFC_NOT_ENABLED);
+  }
+
+  await NfcManager.start();
+
+  await NfcManager.registerTagEvent({
+    isReaderModeEnabled: true,
+    readerModeFlags:
+      NfcAdapter.FLAG_READER_NFC_A +
+      NfcAdapter.FLAG_READER_NFC_B +
+      NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK +
+      NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
+  });
+
   try {
-    if (!(await NfcManager.isSupported())) {
-      throw 'NFC_NOT_SUPPORTED';
-    }
+    const result = await Promise.race([
+      readCardData(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(NfcError.SCAN_TIMEOUT)),
+          timeoutMs,
+        ),
+      ),
+    ]);
 
-    if (!(await NfcManager.isEnabled())) {
-      throw 'NFC_NOT_ENABLED';
-    }
-
-    await NfcManager.start();
-
-    await NfcManager.registerTagEvent({
-      isReaderModeEnabled: true,
-      readerModeFlags:
-        NfcAdapter.FLAG_READER_NFC_A +
-        NfcAdapter.FLAG_READER_NFC_B +
-        NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK +
-        NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS,
-    });
-
-    const card = await readNdef();
-
-    return card;
-  } catch (e) {
-    throw e;
+    return result;
   } finally {
     NfcManager.cancelTechnologyRequest().catch(() => {});
     NfcManager.unregisterTagEvent().catch(() => {});
@@ -234,13 +253,13 @@ export const stopNfc = () => {
   NfcManager.unregisterTagEvent().catch(() => {});
 };
 
-export const isNfcEnabled = async () => {
+export const isNfcEnabled = async (): Promise<boolean> => {
   try {
-    await NfcManager.start();
     return await NfcManager.isEnabled();
   } catch {
     return false;
   }
 };
 
-export const isNfcSupported = async () => NfcManager.isSupported();
+export const isNfcSupported = async (): Promise<boolean> =>
+  NfcManager.isSupported();

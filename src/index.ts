@@ -10,5 +10,6 @@ export {
 // EMV Parser
 export { default as emv } from './emv';
 
-// Types
-export type { EmvObject, NfcCardResult, CardScheme } from './types';
+// Types & Constants
+export type { EmvObject, NfcCardResult, CardScheme, ScanNfcOptions } from './types';
+export { NfcError } from './types';
