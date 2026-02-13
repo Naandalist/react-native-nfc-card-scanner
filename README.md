@@ -4,7 +4,7 @@
 [![license](https://img.shields.io/npm/l/react-native-nfc-card-scanner.svg)](https://github.com/naandalizt/react-native-nfc-card-scanner/blob/main/LICENSE)
 [![platform](https://img.shields.io/badge/platform-android%20%7C%20ios-lightgrey.svg)]()
 
-Read payment card data (card number and expiry date) via NFC using the EMV contactless protocol. Built on top of [`react-native-nfc-manager`](https://github.com/revtel/react-native-nfc-manager).
+Scan credit & debit card details (card number, expiry, card type) via NFC using the EMV contactless protocol. Built on top of [`react-native-nfc-manager`](https://github.com/revtel/react-native-nfc-manager).
 
 ## Features
 
@@ -76,6 +76,7 @@ import {
   stopNfc,
   isNfcSupported,
   isNfcEnabled,
+  NfcError,
 } from 'react-native-nfc-card-scanner';
 
 async function handleScanCard() {
@@ -93,17 +94,18 @@ async function handleScanCard() {
       return;
     }
 
-    // Scan the card
+    // Scan the card (default 30s timeout)
     const result = await scanNfc();
+    // Or with custom timeout
+    // const result = await scanNfc({ timeout: 60000 });
 
-    if (result) {
-      console.log('Card Number:', result.card); // e.g. "4111111111111111"
-      console.log('Expiry Date:', result.exp);  // e.g. "12/27"
-    } else {
-      console.log('Could not read card data');
-    }
+    console.log('Card Number:', result.card);   // e.g. "4111111111111111"
+    console.log('Expiry Date:', result.exp);    // e.g. "12/27"
+    console.log('Card Scheme:', result.scheme); // e.g. "VISA"
   } catch (error) {
-    console.error('NFC scan failed:', error);
+    if (error instanceof Error) {
+      console.error('NFC scan failed:', error.message);
+    }
   }
 }
 
@@ -144,11 +146,14 @@ emv.describe('6F1A840E325041592E5359532E4444463031A5088801025F2D02656E', (result
 
 ### Scanner Functions
 
-#### `scanNfc(): Promise<NfcCardResult | null>`
+#### `scanNfc(options?: ScanNfcOptions): Promise<NfcCardResult>`
 
 Initiates an NFC scan to read a contactless payment card. Handles the full EMV flow: PPSE selection, AID extraction, card scheme detection, and data parsing.
 
-Returns a `NfcCardResult` with card number and expiry, or `null` if the card data could not be extracted.
+Returns a `NfcCardResult` with card number, expiry, and card scheme. Throws an `Error` if the scan fails (see [Error Handling](#error-handling)).
+
+**Options:**
+- `timeout` — Scan timeout in milliseconds (default: `30000`)
 
 #### `stopNfc(): void`
 
@@ -192,8 +197,13 @@ Extracts the full element for a specific tag from parsed EMV objects.
 
 ```typescript
 interface NfcCardResult {
-  card: string; // Card number (PAN)
-  exp: string;  // Expiry date in MM/YY format
+  card: string;         // Card number (PAN)
+  exp: string;          // Expiry date in MM/YY format
+  scheme: CardScheme;   // Detected card scheme
+}
+
+interface ScanNfcOptions {
+  timeout?: number;     // Scan timeout in ms (default: 30000)
 }
 
 interface EmvObject {
@@ -213,9 +223,22 @@ type CardScheme =
   | null;
 ```
 
+### Constants
+
+```typescript
+import { NfcError } from 'react-native-nfc-card-scanner';
+
+// NfcError.NFC_NOT_SUPPORTED
+// NfcError.NFC_NOT_ENABLED
+// NfcError.AID_NOT_FOUND
+// NfcError.UNSUPPORTED_CARD_SCHEME
+// NfcError.CARD_READ_FAILED
+// NfcError.SCAN_TIMEOUT
+```
+
 ## Error Handling
 
-`scanNfc()` may throw the following error strings:
+`scanNfc()` throws `Error` objects with the following messages:
 
 | Error | Description |
 |-------|-------------|
@@ -223,25 +246,37 @@ type CardScheme =
 | `NFC_NOT_ENABLED` | NFC is disabled in device settings |
 | `AID_NOT_FOUND` | No Application Identifier found on the card |
 | `UNSUPPORTED_CARD_SCHEME` | Card scheme is not recognized |
+| `CARD_READ_FAILED` | Card was detected but data could not be read |
+| `SCAN_TIMEOUT` | Scan timed out (default: 30s) |
 
 ```typescript
+import { scanNfc, NfcError } from 'react-native-nfc-card-scanner';
+
 try {
   const result = await scanNfc();
 } catch (error) {
-  switch (error) {
-    case 'NFC_NOT_SUPPORTED':
-      // Handle no NFC hardware
-      break;
-    case 'NFC_NOT_ENABLED':
-      // Prompt user to enable NFC
-      break;
-    case 'AID_NOT_FOUND':
-    case 'UNSUPPORTED_CARD_SCHEME':
-      // Card not supported
-      break;
-    default:
-      // Other NFC errors (e.g. user cancelled, tag lost)
-      break;
+  if (error instanceof Error) {
+    switch (error.message) {
+      case NfcError.NFC_NOT_SUPPORTED:
+        // Handle no NFC hardware
+        break;
+      case NfcError.NFC_NOT_ENABLED:
+        // Prompt user to enable NFC
+        break;
+      case NfcError.CARD_READ_FAILED:
+        // Card detected but couldn't read data
+        break;
+      case NfcError.SCAN_TIMEOUT:
+        // Scan timed out
+        break;
+      case NfcError.AID_NOT_FOUND:
+      case NfcError.UNSUPPORTED_CARD_SCHEME:
+        // Card not supported
+        break;
+      default:
+        // Other NFC errors (e.g. user cancelled, tag lost)
+        break;
+    }
   }
 }
 ```
@@ -266,7 +301,7 @@ Contributions are welcome! Please open an issue or submit a pull request.
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/my-feature`)
 3. Make your changes
-4. Run `yarn build` and `yarn typecheck`
+4. Run `yarn test`, `yarn build`, and `yarn typecheck`
 5. Commit your changes
 6. Push to the branch and open a Pull Request
 
