@@ -1,7 +1,7 @@
 {
   "name": "react-native-nfc-card-scanner",
   "version": "1.0.0",
-  "description": "Scan credit & debit card details (card number, expiry, card type) via NFC contactless reader for React Native (Android & iOS)",
+  "description": "EMV contactless credit & debit card reader for React Native to extract PAN and expiry via NFC in controlled environments (Android, limited iOS support)",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -22,32 +22,27 @@
     "dev": "tsup --watch",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "yarn build"
+    "prepublishOnly": "yarn test && yarn typecheck && yarn build"
   },
   "keywords": [
     "react-native",
     "nfc",
-    "nfc-card-reader",
-    "nfc-credit-card",
-    "nfc card",
     "card-scanner",
     "card-reader",
-    "credit-card",
-    "debit-card",
     "payment-card",
     "emv",
+    "emv-reader",
     "contactless",
-    "tap-to-pay",
-    "payment",
     "iso-dep",
+    "iso7816",
+    "iso14443",
     "tlv",
-    "android",
-    "ios"
+    "android"
   ],
-  "author": "Listiananda Apriliawan",
+  "author": "Listiananda Apriliawan <listiananda.apriliawan@gmail.com> (https://naandalist.com)",
   "username": "Naandalist",
-  "licenseUrl": "https://opensource.org/licenses/MIT",
   "license": "MIT",
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "https://github.com/Naandalist/react-native-nfc-card-scanner.git"
@@ -57,13 +52,16 @@
     "url": "https://github.com/Naandalist/react-native-nfc-card-scanner/issues"
   },
   "peerDependencies": {
-    "react-native-nfc-manager": ">=3.14.0"
+    "react-native-nfc-manager": ">=3.14.0 <4"
   },
   "devDependencies": {
     "react-native-nfc-manager": "^3.16.1",
     "tsup": "^8.0.0",
     "typescript": "^5.3.0",
     "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "packageManager": "yarn@4.12.0+sha512.f45ab632439a67f8bc759bf32ead036a1f413287b9042726b7cc4818b7b49e14e9423ba49b18f9e06ea4941c1ad062385b1d8760a8d5091a1a31e5f6219afca8"
 }

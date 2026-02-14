@@ -1,14 +1,22 @@
 # react-native-nfc-card-scanner
 
+> This library is a low-level EMV reader, not a payment processing solution.
+
 [![npm version](https://img.shields.io/npm/v/react-native-nfc-card-scanner.svg)](https://www.npmjs.com/package/react-native-nfc-card-scanner)
 [![license](https://img.shields.io/npm/l/react-native-nfc-card-scanner.svg)](https://github.com/naandalizt/react-native-nfc-card-scanner/blob/main/LICENSE)
-[![platform](https://img.shields.io/badge/platform-android%20%7C%20ios-lightgrey.svg)]()
+![platform](https://img.shields.io/badge/platform-android%20%7C%20ios--limited-lightgrey.svg)
 
-Scan credit & debit card details (card number, expiry, card type) via NFC using the EMV contactless protocol. Built on top of [`react-native-nfc-manager`](https://github.com/revtel/react-native-nfc-manager).
+
+EMV contactless credit & debit card reader for React Native to extract PAN and expiry via NFC in controlled environments, depending on card issuer policies and device support..
+
+> ⚠️ **Platform Note**: Full support on Android. iOS support is limited by Apple's NFC restrictions and may not work on all devices or regions.
+
+Built on top of [`react-native-nfc-manager`](https://github.com/revtel/react-native-nfc-manager).
+
 
 ## Features
 
-- Scan contactless (tap-to-pay) payment cards via NFC
+- Read EMV contactless payment cards via NFC
 - Extract card number (PAN) and expiration date
 - Auto-detect card scheme from AID
 - Built-in EMV TLV parser
@@ -25,6 +33,13 @@ Scan credit & debit card details (card number, expiry, card type) via NFC using 
 | American Express | `A000000025` |
 | UnionPay | `A000000333` |
 | Discover / Diners Club | `A000000152`, `A000000324`, `A000000444` |
+
+## Limitations
+
+- Not all cards expose readable PAN data
+- Some issuers return masked or partial values
+- iOS support is restricted by Core NFC policies
+- Results depend on region and card configuration
 
 ## Installation
 
@@ -311,6 +326,16 @@ This library communicates with EMV contactless payment cards using the ISO-DEP (
 6. **Parse EMV Response** - Decodes TLV-encoded response to extract card number and expiry
 
 The library only reads the card number (PAN) and expiration date. It does **not** read CVV, PIN, or any security-sensitive data that would allow unauthorized transactions.
+
+## Security & Compliance
+
+This library is intended for use in controlled environments such as internal tools, testing systems, kiosks, or POS-like applications.
+
+It does **not** implement PCI-DSS compliance, encryption, secure storage, or cardholder data protection mechanisms.
+
+Developers are responsible for ensuring that any usage of this library complies with applicable security standards, privacy regulations, and payment network rules.
+
+See [`SECURITY.md`](SECURITY.md) for full details, including what data is read, what is not provided, and recommendations for secure usage.
 
 ## Contributing
 
