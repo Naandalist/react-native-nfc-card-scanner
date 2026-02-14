@@ -1,13 +1,11 @@
 # react-native-nfc-card-scanner
 
-> This library is a low-level EMV reader, not a payment processing solution.
-
 [![npm version](https://img.shields.io/npm/v/react-native-nfc-card-scanner.svg)](https://www.npmjs.com/package/react-native-nfc-card-scanner)
 [![license](https://img.shields.io/npm/l/react-native-nfc-card-scanner.svg)](https://github.com/naandalizt/react-native-nfc-card-scanner/blob/main/LICENSE)
 ![platform](https://img.shields.io/badge/platform-android%20%7C%20ios--limited-lightgrey.svg)
 
 
-EMV contactless credit & debit card reader for React Native to extract PAN and expiry via NFC in controlled environments, depending on card issuer policies and device support..
+EMV contactless credit & debit card reader for React Native to extract PAN and expiry via NFC in controlled environments, depending on card issuer policies and device support.
 
 > ⚠️ **Platform Note**: Full support on Android. iOS support is limited by Apple's NFC restrictions and may not work on all devices or regions.
 
