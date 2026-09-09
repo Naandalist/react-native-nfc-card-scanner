@@ -52,7 +52,7 @@
     "url": "https://github.com/Naandalist/react-native-nfc-card-scanner/issues"
   },
   "peerDependencies": {
-    "react-native-nfc-manager": ">=3.14.0"
+    "react-native-nfc-manager": ">=3.14.0 <4"
   },
   "devDependencies": {
     "react-native-nfc-manager": "^3.16.1",
