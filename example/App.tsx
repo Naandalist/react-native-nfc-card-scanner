@@ -170,7 +170,7 @@ function App(): React.JSX.Element {
               </View>
             )}
             <Text style={styles.cardNumber}>
-              {maskCardNumber(cardResult.card)}
+              {cardResult.maskedPan || maskCardNumber(cardResult.card)}
             </Text>
             <View style={styles.cardFooter}>
               <View>

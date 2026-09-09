@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NfcError } from '../types';
+import { NfcError, NfcScanError } from '../types';
 
 describe('NfcError', () => {
   it('should have all expected error codes', () => {
@@ -15,5 +15,12 @@ describe('NfcError', () => {
     const error = new Error(NfcError.NFC_NOT_SUPPORTED);
     expect(error.message).toBe('NFC_NOT_SUPPORTED');
     expect(error).toBeInstanceOf(Error);
+  });
+
+  it('exposes code on NfcScanError', () => {
+    const error = new NfcScanError(NfcError.CARD_READ_FAILED);
+    expect(error).toBeInstanceOf(Error);
+    expect(error.code).toBe('CARD_READ_FAILED');
+    expect(error.message).toBe('CARD_READ_FAILED');
   });
 });

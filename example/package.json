@@ -12,7 +12,8 @@
   "dependencies": {
     "react": "19.0.0",
     "react-native": "0.79.7",
-    "react-native-nfc-card-scanner": "file:.."
+    "react-native-nfc-card-scanner": "file:..",
+    "react-native-nfc-manager": "^3.16.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

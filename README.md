@@ -1,16 +1,14 @@
 # react-native-nfc-card-scanner
 
 [![npm version](https://img.shields.io/npm/v/react-native-nfc-card-scanner.svg)](https://www.npmjs.com/package/react-native-nfc-card-scanner)
-[![license](https://img.shields.io/npm/l/react-native-nfc-card-scanner.svg)](https://github.com/naandalizt/react-native-nfc-card-scanner/blob/main/LICENSE)
-![platform](https://img.shields.io/badge/platform-android%20%7C%20ios--limited-lightgrey.svg)
-
+[![license](https://img.shields.io/npm/l/react-native-nfc-card-scanner.svg)](https://github.com/Naandalist/react-native-nfc-card-scanner/blob/main/LICENSE)
+![platform](https://img.shields.io/badge/platform-android%20%7C%20ios%20blocked%20by%20Apple-lightgrey.svg)
 
 EMV contactless credit & debit card reader for React Native to extract PAN and expiry via NFC in controlled environments, depending on card issuer policies and device support.
 
-> ⚠️ **Platform Note**: Full support on Android. iOS support is limited by Apple's NFC restrictions and may not work on all devices or regions.
+> **Platform Note**: **Android is the supported path.** Apple Core NFC does not support payment-related AIDs, so reading a bank-card PAN on iPhone is generally blocked. Listing Visa/Mastercard AIDs in `Info.plist` does not override that restriction.
 
 Built on top of [`react-native-nfc-manager`](https://github.com/revtel/react-native-nfc-manager).
-
 
 ## Features
 
@@ -36,7 +34,7 @@ Built on top of [`react-native-nfc-manager`](https://github.com/revtel/react-nat
 
 - Not all cards expose readable PAN data
 - Some issuers return masked or partial values
-- iOS support is restricted by Core NFC policies
+- iOS cannot reliably read payment-card PANs (Core NFC blocks payment AIDs)
 - Results depend on region and card configuration
 
 ## Installation
@@ -76,8 +74,16 @@ Add NFC permission to your `AndroidManifest.xml`:
 <key>com.apple.developer.nfc.readersession.iso7816.select-identifiers</key>
 <array>
   <string>325041592E5359532E4444463031</string>
+  <string>A0000000031010</string>
+  <string>A0000000041010</string>
+  <string>A000000025010701</string>
+  <string>A0000000651010</string>
+  <string>A000000333010101</string>
+  <string>A0000001523010</string>
 </array>
 ```
+
+Core NFC still ignores payment AIDs. Keep this list only if you are experimenting; do not expect App Store iPhone builds to read credit cards.
 
 ## Usage
 
@@ -94,7 +100,6 @@ import {
 
 async function handleScanCard() {
   try {
-    // Check device capabilities
     const supported = await isNfcSupported();
     if (!supported) {
       console.log('NFC is not supported on this device');
@@ -107,14 +112,12 @@ async function handleScanCard() {
       return;
     }
 
-    // Scan the card (default 30s timeout)
     const result = await scanNfc();
-    // Or with custom timeout
-    // const result = await scanNfc({ timeout: 60000 });
-
-    console.log('Card Number:', result.card);   // e.g. "4111111111111111"
-    console.log('Expiry Date:', result.exp);    // e.g. "12/27"
-    console.log('Card Scheme:', result.scheme); // e.g. "VISA"
+    console.log('Card Number:', result.pan);
+    console.log('Masked PAN:', result.maskedPan);
+    console.log('Expiry Date:', result.exp);
+    console.log('Card Scheme:', result.scheme);
+    // const masked = await scanNfc({ timeout: 60000, maskPan: true });
   } catch (error) {
     if (error instanceof Error) {
       console.error('NFC scan failed:', error.message);
@@ -122,206 +125,43 @@ async function handleScanCard() {
   }
 }
 
-// To cancel an ongoing scan
 function handleCancel() {
   stopNfc();
 }
 ```
 
-### Card Scheme Detection
-
-```typescript
-import { getCardSchemeFromAid } from 'react-native-nfc-card-scanner';
-
-const scheme = getCardSchemeFromAid('A0000000031010');
-console.log(scheme); // "VISA"
-```
-
-### EMV Parser (Standalone)
-
-```typescript
-import { emv } from 'react-native-nfc-card-scanner';
-
-// Parse raw EMV TLV data
-emv.parse('6F1A840E325041592E5359532E4444463031A5088801025F2D02656E', (result) => {
-  console.log(result);
-});
-
-// Parse with tag descriptions
-emv.describe('6F1A840E325041592E5359532E4444463031A5088801025F2D02656E', (result) => {
-  result.forEach((item) => {
-    console.log(`${item.tag}: ${item.description} = ${item.value}`);
-  });
-});
-```
-
-## API Reference
-
-### Scanner Functions
-
-#### `scanNfc(options?: ScanNfcOptions): Promise<NfcCardResult>`
-
-Initiates an NFC scan to read a contactless payment card. Handles the full EMV flow: PPSE selection, AID extraction, card scheme detection, and data parsing.
-
-Returns a `NfcCardResult` with card number, expiry, and card scheme. Throws an `Error` if the scan fails (see [Error Handling](#error-handling)).
-
-**Options:**
-- `timeout` — Scan timeout in milliseconds (default: `30000`)
-
-#### `stopNfc(): void`
-
-Cancels an ongoing NFC scan and releases the NFC reader.
-
-#### `isNfcEnabled(): Promise<boolean>`
-
-Checks whether NFC is currently enabled on the device.
-
-#### `isNfcSupported(): Promise<boolean>`
-
-Checks whether the device has NFC hardware.
-
-#### `getCardSchemeFromAid(aid: string): CardScheme`
-
-Determines the card network from an Application Identifier (AID) string.
-
-### EMV Parser
-
-#### `emv.parse(data: string, callback: (result: EmvObject[]) => void): void`
-
-Parses raw hex-encoded TLV data into structured `EmvObject` arrays.
-
-#### `emv.describe(data: string, callback: (result: EmvObject[]) => void): void`
-
-Parses TLV data and adds human-readable tag descriptions.
-
-#### `emv.lookup(tag: string, callback: (name: string | undefined) => void): void`
-
-Looks up the name of an EMV tag.
-
-#### `emv.getValue(tag: string, objects: EmvObject[], callback: (value: string | EmvObject[]) => void): void`
-
-Extracts the value for a specific tag from parsed EMV objects.
-
-#### `emv.getElement(tag: string, objects: EmvObject[], callback: (element: EmvObject) => void): void`
-
-Extracts the full element for a specific tag from parsed EMV objects.
-
-### Types
+## API types
 
 ```typescript
 interface NfcCardResult {
-  card: string;         // Card number (PAN)
-  exp: string;          // Expiry date in MM/YY format
-  scheme: CardScheme;   // Detected card scheme
+  card: string;         // Same as pan (deprecated alias)
+  pan: string;
+  maskedPan: string;
+  exp: string;
+  scheme: CardScheme;
+  aid?: string;
 }
 
 interface ScanNfcOptions {
-  timeout?: number;     // Scan timeout in ms (default: 30000)
-}
-
-interface EmvObject {
-  tag: string;
-  length: string;
-  value: string | EmvObject[];
-  description?: string;
-}
-
-type CardScheme =
-  | 'VISA'
-  | 'MASTERCARD'
-  | 'JCB'
-  | 'AMEX'
-  | 'UNIONPAY'
-  | 'DISCOVER'
-  | null;
-```
-
-### Constants
-
-```typescript
-import { NfcError } from 'react-native-nfc-card-scanner';
-
-// NfcError.NFC_NOT_SUPPORTED
-// NfcError.NFC_NOT_ENABLED
-// NfcError.AID_NOT_FOUND
-// NfcError.UNSUPPORTED_CARD_SCHEME
-// NfcError.CARD_READ_FAILED
-// NfcError.SCAN_TIMEOUT
-```
-
-## Error Handling
-
-`scanNfc()` throws `Error` objects with the following messages:
-
-| Error | Description |
-|-------|-------------|
-| `NFC_NOT_SUPPORTED` | Device does not have NFC hardware |
-| `NFC_NOT_ENABLED` | NFC is disabled in device settings |
-| `AID_NOT_FOUND` | No Application Identifier found on the card |
-| `UNSUPPORTED_CARD_SCHEME` | Card scheme is not recognized |
-| `CARD_READ_FAILED` | Card was detected but data could not be read |
-| `SCAN_TIMEOUT` | Scan timed out (default: 30s) |
-
-```typescript
-import { scanNfc, NfcError } from 'react-native-nfc-card-scanner';
-
-try {
-  const result = await scanNfc();
-} catch (error) {
-  if (error instanceof Error) {
-    switch (error.message) {
-      case NfcError.NFC_NOT_SUPPORTED:
-        // Handle no NFC hardware
-        break;
-      case NfcError.NFC_NOT_ENABLED:
-        // Prompt user to enable NFC
-        break;
-      case NfcError.CARD_READ_FAILED:
-        // Card detected but couldn't read data
-        break;
-      case NfcError.SCAN_TIMEOUT:
-        // Scan timed out
-        break;
-      case NfcError.AID_NOT_FOUND:
-      case NfcError.UNSUPPORTED_CARD_SCHEME:
-        // Card not supported
-        break;
-      default:
-        // Other NFC errors (e.g. user cancelled, tag lost)
-        break;
-    }
-  }
+  timeout?: number;
+  maskPan?: boolean;
 }
 ```
+
+`scanNfc()` still throws `Error` / `NfcScanError` with `error.message` equal to `NfcError.*` codes.
 
 ## Example
 
-A full working example app is available in the [`example/`](example/) directory. It demonstrates scanning a card, displaying results, handling errors, and checking NFC status.
-
-To run the example:
-
-```bash
-cd example
-npm install
-
-# Android
-npx react-native run-android
-
-# iOS
-cd ios && pod install && cd ..
-npx react-native run-ios
-```
+See [`example/`](example/). Use a physical Android device with NFC.
 
 ## How It Works
 
-This library communicates with EMV contactless payment cards using the ISO-DEP (ISO 14443-4) protocol:
-
-1. **SELECT PPSE** - Selects the Payment System Environment on the card
-2. **Extract AIDs** - Parses the response to find Application Identifiers
-3. **Identify Card Scheme** - Matches AIDs against known card network prefixes
-4. **SELECT AID** - Selects the payment application on the card
-5. **GET PROCESSING OPTIONS** - Sends PDOL commands to retrieve card data
-6. **Parse EMV Response** - Decodes TLV-encoded response to extract card number and expiry
+1. **SELECT PPSE** — Payment System Environment
+2. **Extract AIDs** — All Application Identifiers, ranked by known scheme
+3. **SELECT AID** — Payment application (with `Le`)
+4. **GET PROCESSING OPTIONS** — PDOL (`9F38`) is parsed and GPO is built dynamically
+5. **READ RECORD** — Only the SFI/records listed in the AFL
+6. **Parse EMV Response** — PAN from `5A` or Track 2 `57`, expiry from `5F24` or `57`
 
 The library only reads the card number (PAN) and expiration date. It does **not** read CVV, PIN, or any security-sensitive data that would allow unauthorized transactions.
 
@@ -331,20 +171,11 @@ This library is intended for use in controlled environments such as internal too
 
 It does **not** implement PCI-DSS compliance, encryption, secure storage, or cardholder data protection mechanisms.
 
-Developers are responsible for ensuring that any usage of this library complies with applicable security standards, privacy regulations, and payment network rules.
-
-See [`SECURITY.md`](SECURITY.md) for full details, including what data is read, what is not provided, and recommendations for secure usage.
+See [`SECURITY.md`](SECURITY.md) for full details.
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/my-feature`)
-3. Make your changes
-4. Run `yarn test`, `yarn build`, and `yarn typecheck`
-5. Commit your changes
-6. Push to the branch and open a Pull Request
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Tracking issue: [#1](https://github.com/Naandalist/react-native-nfc-card-scanner/issues/1).
 
 ## Author
 
