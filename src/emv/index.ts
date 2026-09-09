@@ -2,7 +2,6 @@ import { EmvObject } from '../types';
 import emvTags from './tags';
 import * as util from './utils';
 
-// Types
 type Callback<T> = (result: T) => void;
 
 interface EmvTagItem {
@@ -11,47 +10,49 @@ interface EmvTagItem {
   name: string;
 }
 
-// Look up a tag name in the kernel
 function lookupKernel(
   tag: string,
   kernel: string,
-  callback: Callback<string | undefined>,
-): void {
+  callback?: Callback<string | undefined>,
+): string | undefined {
   const found = emvTags.filter(
     (item: EmvTagItem) =>
       item.tag === tag && item.kernel.toUpperCase() === kernel.toUpperCase(),
   );
-  callback(found.length ? found[0].name : undefined);
+  const name = found.length ? found[0].name : undefined;
+  callback?.(name);
+  return name;
 }
 
-// Get value for a tag from a list of EMV objects
 function getValue(
   tag: string,
   emv_objects: EmvObject[],
-  callback: Callback<string | EmvObject[]>,
-): void {
-  emv_objects.forEach((item) => {
-    if (item.tag === tag) {
-      callback(item.value);
-    }
-  });
+  callback?: Callback<string | EmvObject[] | undefined>,
+): string | EmvObject[] | undefined {
+  const match = emv_objects.find((item) => item.tag === tag);
+  const value = match?.value;
+  if (match) {
+    callback?.(value);
+  } else {
+    callback?.(undefined);
+  }
+  return value;
 }
 
-// Get the element (object) with a given tag from a list
 function getElement(
   tag: string,
   emv_objects: EmvObject[],
-  callback: Callback<EmvObject>,
-): void {
-  emv_objects.forEach((item) => {
-    if (item.tag === tag) {
-      callback(item);
-    }
-  });
+  callback?: Callback<EmvObject | undefined>,
+): EmvObject | undefined {
+  const match = emv_objects.find((item) => item.tag === tag);
+  callback?.(match);
+  return match;
 }
 
-// Parse TLV-encoded EMV data
-function parse(emv_data: string, callback: Callback<EmvObject[]>): void {
+function parse(
+  emv_data: string,
+  callback?: Callback<EmvObject[]>,
+): EmvObject[] {
   const emv_objects: EmvObject[] = [];
   let data = emv_data;
 
@@ -110,78 +111,83 @@ function parse(emv_data: string, callback: Callback<EmvObject[]>): void {
     );
 
     if (tag_constructed === '1') {
-      parse(value, (innerTags: EmvObject[]) => {
-        value = innerTags;
-      });
+      value = parse(value);
     }
 
     emv_objects.push({ tag, length: lenHex, value });
     data = data.substring(offset);
   }
 
-  callback(emv_objects);
+  callback?.(emv_objects);
+  return emv_objects;
 }
 
-// Describe all tags for a given kernel
 function describeKernel(
   emv_data: string,
   kernel: string,
-  callback: Callback<EmvObject[]>,
-): void {
+  callback?: Callback<EmvObject[]>,
+): EmvObject[] {
   const emv_objects: EmvObject[] = [];
-  parse(emv_data, (tlv_list: EmvObject[]) => {
-    if (tlv_list != null) {
-      for (let i = 0; i < tlv_list.length; i++) {
-        lookupKernel(tlv_list[i].tag, kernel, (data) => {
-          const inner_list = tlv_list[i].value;
-          if (Array.isArray(inner_list)) {
-            for (let j = 0; j < inner_list.length; j++) {
-              const innerItem = inner_list[j];
-              if (typeof innerItem === 'object' && innerItem !== null) {
-                lookupKernel(innerItem.tag, kernel, (jdata) => {
-                  if (jdata) {
-                    innerItem.description = jdata;
-                  }
-                });
-              }
-            }
+  const tlv_list = parse(emv_data);
+  for (let i = 0; i < tlv_list.length; i++) {
+    const data = lookupKernel(tlv_list[i].tag, kernel);
+    const inner_list = tlv_list[i].value;
+    if (Array.isArray(inner_list)) {
+      for (let j = 0; j < inner_list.length; j++) {
+        const innerItem = inner_list[j];
+        if (typeof innerItem === 'object' && innerItem !== null) {
+          const jdata = lookupKernel(innerItem.tag, kernel);
+          if (jdata) {
+            innerItem.description = jdata;
           }
-          if (data) {
-            tlv_list[i].description = data;
-          }
-          emv_objects.push(tlv_list[i]);
-        });
+        }
       }
-      callback(emv_objects);
     }
-  });
+    if (data) {
+      tlv_list[i].description = data;
+    }
+    emv_objects.push(tlv_list[i]);
+  }
+  callback?.(emv_objects);
+  return emv_objects;
 }
 
+const asPromise = <T>(value: T): Promise<T> => Promise.resolve(value);
+
 export default {
-  parse: (emv_data: string, callback: Callback<EmvObject[]>) =>
+  parse: (emv_data: string, callback?: Callback<EmvObject[]>) =>
     parse(emv_data, callback),
-  describe: (emv_data: string, callback: Callback<EmvObject[]>) =>
+  describe: (emv_data: string, callback?: Callback<EmvObject[]>) =>
     describeKernel(emv_data, 'Generic', callback),
-  lookup: (emv_tag: string, callback: Callback<string | undefined>) =>
+  lookup: (emv_tag: string, callback?: Callback<string | undefined>) =>
     lookupKernel(emv_tag, 'Generic', callback),
   describeKernel: (
     emv_data: string,
     kernel: string,
-    callback: Callback<EmvObject[]>,
+    callback?: Callback<EmvObject[]>,
   ) => describeKernel(emv_data, kernel, callback),
   lookupKernel: (
     emv_tag: string,
     kernel: string,
-    callback: Callback<string | undefined>,
+    callback?: Callback<string | undefined>,
   ) => lookupKernel(emv_tag, kernel, callback),
   getValue: (
     emv_tag: string,
     emv_objects: EmvObject[],
-    callback: Callback<string | EmvObject[]>,
+    callback?: Callback<string | EmvObject[] | undefined>,
   ) => getValue(emv_tag, emv_objects, callback),
   getElement: (
     emv_tag: string,
     emv_objects: EmvObject[],
-    callback: Callback<EmvObject>,
+    callback?: Callback<EmvObject | undefined>,
   ) => getElement(emv_tag, emv_objects, callback),
+  parseAsync: (emv_data: string) => asPromise(parse(emv_data)),
+  describeAsync: (emv_data: string) =>
+    asPromise(describeKernel(emv_data, 'Generic')),
+  lookupAsync: (emv_tag: string) =>
+    asPromise(lookupKernel(emv_tag, 'Generic')),
+  getValueAsync: (emv_tag: string, emv_objects: EmvObject[]) =>
+    asPromise(getValue(emv_tag, emv_objects)),
+  getElementAsync: (emv_tag: string, emv_objects: EmvObject[]) =>
+    asPromise(getElement(emv_tag, emv_objects)),
 };

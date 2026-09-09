@@ -61,10 +61,44 @@ describe('emv.getElement', () => {
   it('should extract the full element for a given tag', () => {
     emv.parse('5A084761739001010119', (parsed) => {
       emv.getElement('5A', parsed, (element) => {
-        expect(element.tag).toBe('5A');
-        expect(element.value).toBe('4761739001010119');
-        expect(element.length).toBeDefined();
+        expect(element).toBeDefined();
+        expect(element!.tag).toBe('5A');
+        expect(element!.value).toBe('4761739001010119');
+        expect(element!.length).toBeDefined();
       });
     });
+  });
+});
+
+describe('emv promise / return-value API', () => {
+  it('parse returns TLV without requiring a callback', () => {
+    const result = emv.parse('5A084761739001010119');
+    expect(result).toHaveLength(1);
+    expect(result[0].tag).toBe('5A');
+    expect(result[0].value).toBe('4761739001010119');
+  });
+
+  it('parseAsync resolves the same TLV', async () => {
+    const result = await emv.parseAsync('5A084761739001010119');
+    expect(result[0].tag).toBe('5A');
+  });
+
+  it('lookupAsync resolves a known tag name', async () => {
+    await expect(emv.lookupAsync('42')).resolves.toBe(
+      'Issuer Identification Number (IIN)',
+    );
+  });
+
+  it('getValue / getElement work without callbacks', () => {
+    const parsed = emv.parse('5A084761739001010119');
+    expect(emv.getValue('5A', parsed)).toBe('4761739001010119');
+    expect(emv.getElement('5A', parsed)?.tag).toBe('5A');
+    expect(emv.getValue('ZZ', parsed)).toBeUndefined();
+  });
+
+  it('describeAsync returns parsed objects', async () => {
+    const described = await emv.describeAsync('5A084761739001010119');
+    expect(described[0].tag).toBe('5A');
+    expect(described[0].value).toBe('4761739001010119');
   });
 });

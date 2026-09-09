@@ -47,6 +47,35 @@ yarn add react-native-nfc-card-scanner react-native-nfc-manager
 
 > `react-native-nfc-manager` is a required peer dependency.
 
+### Expo
+
+This package cannot run in Expo Go (it needs custom native code). In a dev-client / prebuild app:
+
+```json
+{
+  "expo": {
+    "plugins": [
+      "react-native-nfc-manager",
+      [
+        "react-native-nfc-card-scanner",
+        {
+          "nfcPermission": "This app uses NFC to read payment card information"
+        }
+      ]
+    ]
+  }
+}
+```
+
+Then rebuild (`npx expo prebuild` / `npx expo run:android`). The plugin adds:
+
+- Android `NFC` permission and optional `android.hardware.nfc` feature
+- iOS `NFCReaderUsageDescription`
+- ISO7816 select-identifiers for PPSE + common scheme AIDs
+- `com.apple.developer.nfc.readersession.formats = TAG`
+
+Payment AIDs are still blocked by Core NFC on iPhone.
+
 ## Platform Setup
 
 ### Android
@@ -149,6 +178,19 @@ interface ScanNfcOptions {
 ```
 
 `scanNfc()` still throws `Error` / `NfcScanError` with `error.message` equal to `NfcError.*` codes.
+
+## EMV parser
+
+Callback style still works. Prefer the return value or `*Async` helpers:
+
+```typescript
+import { emv } from 'react-native-nfc-card-scanner';
+
+const tlv = emv.parse('5A084761739001010119');
+const pan = emv.getValue('5A', tlv);
+
+const described = await emv.describeAsync('5A084761739001010119');
+```
 
 ## Example
 
