@@ -1,0 +1,33 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn test
+      - run: yarn typecheck
+      - run: yarn build
+
+      # OIDC trusted publishing. No NPM_TOKEN.
+      # On npmjs.com, allow this workflow to run `npm publish`
+      # (new trusted-publisher configs default to `npm stage publish` only).
+      - run: npm publish --access public
