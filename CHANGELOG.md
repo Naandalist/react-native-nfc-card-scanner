@@ -13,6 +13,9 @@ All notable changes to this project will be documented in this file.
 - `scanNfc({ maskPan: true })`
 - NFC permission / Info.plist setup in the example app
 - GitHub Actions CI (`test`, `typecheck`, `build`)
+- Expo config plugin (`app.plugin.js`) for Android NFC permission + iOS Info.plist / entitlements
+- `emv.parse` / `describe` / `lookup` / `getValue` / `getElement` now return values; callbacks stay optional
+- Promise aliases: `emv.parseAsync`, `describeAsync`, `lookupAsync`, `getValueAsync`, `getElementAsync`
 
 ### Fixed
 
